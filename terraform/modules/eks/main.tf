@@ -40,8 +40,22 @@ resource "aws_iam_openid_connect_provider" "eks" {
 }
 
 resource "aws_launch_template" "nodes" {
-  name_prefix            = "${var.cluster_name}-nodes-"
-  vpc_security_group_ids = [var.node_security_group_id]
+  name_prefix = "${var.cluster_name}-nodes-"
+
+  # 2 SGs anexados em cada node:
+  #  1. node_security_group_id — trafego EXTERNO (HTTP/HTTPS, NodePort)
+  #  2. cluster_security_group_id — trafego INTRA-CLUSTER (all -1 self,
+  #     auto-criado pelo EKS, contem DNS UDP/53 entre nodes).
+  #
+  # Sem o cluster SG, pods em nodes onde CoreDNS NAO roda nao conseguem
+  # resolver DNS (UDP/53 cross-node bloqueado). Esse SG eh anexado
+  # automaticamente pelo EKS quando aws_eks_node_group NAO usa launch
+  # template — mas como temos launch template (necessario p/ IMDSv2),
+  # precisamos explicita-lo aqui. Padrao recomendado pela AWS.
+  vpc_security_group_ids = [
+    var.node_security_group_id,
+    aws_eks_cluster.this.vpc_config[0].cluster_security_group_id,
+  ]
 
   # Quando o node group usa launch template, o disk_size NAO pode estar
   # no aws_eks_node_group — precisa vir do bloco block_device_mappings aqui.

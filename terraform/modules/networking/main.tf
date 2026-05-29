@@ -105,8 +105,10 @@ resource "aws_route_table_association" "private" {
 }
 
 resource "aws_security_group" "eks_nodes" {
-  name        = "${local.name}-eks-nodes-sg"
-  description = "Trafego dos nodes do EKS"
+  # name_prefix (em vez de name): permite create_before_destroy sem conflito
+  # de nome duplicado durante replacement.
+  name_prefix = "${local.name}-eks-nodes-"
+  description = "Trafego externo aos nodes do EKS (intra-cluster via EKS cluster SG anexado no launch template)"
   vpc_id      = aws_vpc.this.id
 
   ingress {
@@ -118,8 +120,7 @@ resource "aws_security_group" "eks_nodes" {
   }
 
   # NodePort range — necessario quando LB do tipo NLB encaminha pro NodePort
-  # do Service preservando o IP do cliente original (target-type=instance).
-  # Sem isso, trafego do NGINX Ingress NLB nao chega nos pods.
+  # preservando o IP do cliente original (target-type=instance).
   ingress {
     description = "Kubernetes NodePort range (NLB instance target)"
     from_port   = 30000
@@ -128,17 +129,10 @@ resource "aws_security_group" "eks_nodes" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # All-to-all entre membros do mesmo SG (cluster intra-traffic).
-  # CRITICO: precisa cobrir UDP/53 (DNS via CoreDNS), UDP geral (VXLAN),
-  # ICMP (health checks) — nao so TCP. Sem isso, pods em nodes diferentes
-  # nao conseguem resolver DNS (CoreDNS responde apenas no node onde roda).
-  ingress {
-    description = "All traffic between cluster members (DNS, kubelet, pod-to-pod)"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    self        = true
-  }
+  # Trafego intra-cluster (DNS UDP/53, VXLAN, kubelet, pod-to-pod, etc.)
+  # NAO eh declarado aqui — eh herdado do "EKS cluster security group" criado
+  # automaticamente pelo EKS (regra -1 self), anexado aos nodes via launch
+  # template em modules/eks/main.tf. Padrao recomendado pela AWS.
 
   egress {
     description = "Saida irrestrita"
@@ -150,6 +144,12 @@ resource "aws_security_group" "eks_nodes" {
 
   tags = {
     Name = "${local.name}-eks-nodes-sg"
+  }
+
+  # Permite replacement do SG (ex: mudanca de descricao) sem downtime —
+  # cria o novo SG, atualiza referencias, depois destroi o antigo.
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
