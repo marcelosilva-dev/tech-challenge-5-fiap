@@ -46,3 +46,4 @@ Thumbs.db
 # Build artifacts
 dist/
 build/
+microservices/donation-service/donation-service
