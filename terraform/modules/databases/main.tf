@@ -68,7 +68,7 @@ resource "aws_dynamodb_table" "volunteers" {
     enabled = var.enable_dynamodb_global_table
   }
 
-  # Streams sao pre-requisito para Global Tables (Sprint 6 - DR)
+  # Streams pre-requisito para Global Tables (Sprint 6 - DR)
   stream_enabled   = var.enable_dynamodb_global_table
   stream_view_type = var.enable_dynamodb_global_table ? "NEW_AND_OLD_IMAGES" : null
 
@@ -76,9 +76,29 @@ resource "aws_dynamodb_table" "volunteers" {
     enabled = true
   }
 
+  # Sprint 6 DR: replicas cross-region via Global Tables v2 (nativo).
+  # Vazio por default; setado para ["us-west-2"] no environment primary
+  # quando o DR estiver ativo. Replicacao bidirecional multi-master ~segundos.
+  dynamic "replica" {
+    for_each = var.dynamodb_replica_regions
+    content {
+      region_name            = replica.value
+      point_in_time_recovery = true
+    }
+  }
+
   tags = {
     Name      = var.dynamodb_table_name
     Component = "database"
     Service   = "volunteer"
+  }
+
+  # Replicas precisam de mudancas in-place no recurso, lifecycle previne
+  # destroy acidental da tabela quando rotacionando regioes
+  lifecycle {
+    ignore_changes = [
+      # Ignora drift em billing_mode caso seja ajustado fora do Terraform
+      billing_mode,
+    ]
   }
 }

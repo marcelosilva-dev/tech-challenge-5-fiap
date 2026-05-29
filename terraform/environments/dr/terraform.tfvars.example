@@ -1,0 +1,16 @@
+aws_region     = "us-west-2"
+primary_region = "us-east-1"
+project_name   = "solidarytech"
+
+# AWS Academy: descobrir com `aws sts get-caller-identity`
+# ARN identico em todas as regioes para a mesma conta
+lab_role_arn = "arn:aws:iam::SEU_ACCOUNT_ID:role/LabRole"
+
+# Necessario para criar RDS read replica cross-region.
+# Descobrir com: terraform -chdir=../primary output -raw donation_db_address
+# (e formatar como ARN: arn:aws:rds:us-east-1:<ACCOUNT>:db:solidarytech-donation-db)
+primary_donation_db_arn = "arn:aws:rds:us-east-1:SEU_ACCOUNT_ID:db:solidarytech-donation-db"
+primary_account_id      = "SEU_ACCOUNT_ID"
+
+# DR posture skeleton — 1 node em standby
+node_desired_size = 1

@@ -36,5 +36,11 @@ variable "db_password" {
 variable "node_desired_size" {
   description = "Quantidade desejada inicial de nodes (Sprint 5 ajustara via rightsizing)."
   type        = number
-  default     = 2
+  default     = 3
+}
+
+variable "dynamodb_replica_regions" {
+  description = "Regioes para replicas DynamoDB Global Tables (Sprint 6 DR). Ex: [\"us-west-2\"]."
+  type        = list(string)
+  default     = ["us-west-2"]
 }

@@ -32,6 +32,11 @@ module "databases" {
 
   # primary nao precisa Multi-AZ no MVP — DR cross-region cobre.
   multi_az = false
+
+  # Sprint 6 DR: replica DynamoDB volunteers em us-west-2 via Global Tables.
+  # Vazio = sem replica (default); pode ser desabilitado se o ambiente DR
+  # for completamente destruido.
+  dynamodb_replica_regions = var.dynamodb_replica_regions
 }
 
 module "eks" {

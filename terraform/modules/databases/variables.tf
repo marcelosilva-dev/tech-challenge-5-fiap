@@ -66,3 +66,9 @@ variable "enable_dynamodb_global_table" {
   type        = bool
   default     = true
 }
+
+variable "dynamodb_replica_regions" {
+  description = "Regioes para Global Tables replicas (Sprint 6 DR). Vazio = sem replicacao cross-region."
+  type        = list(string)
+  default     = []
+}

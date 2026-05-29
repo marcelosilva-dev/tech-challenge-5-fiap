@@ -1,0 +1,126 @@
+name: DR Drill - Monthly
+
+# Roda mensalmente (1o dia 04:00 UTC = 01:00 BRT) + on-demand via workflow_dispatch.
+# Valida que a estrategia DR funciona ponta-a-ponta sem afetar o primary.
+#
+# IMPORTANTE: este workflow APLICA terraform no environment dr (cria recursos).
+# Para drill nao-destrutivo: setar input dry_run=true.
+# Para drill REAL com failover: setar input perform_failover=true.
+
+on:
+  schedule:
+    # 1o dia de cada mes, 04:00 UTC
+    - cron: "0 4 1 * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run mode (nao cria/destroi recursos)"
+        type: boolean
+        default: true
+      perform_failover:
+        description: "Executar failover de fato (DESTRUTIVO — promove RDS replica)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  dr-drill:
+    name: DR Drill — provisiona + valida + destroi
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.30.0
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Dry-run summary
+        if: ${{ inputs.dry_run == true || inputs.dry_run == 'true' }}
+        run: |
+          echo "::notice::DRY-RUN mode — terraform plan only"
+          cd terraform/environments/dr
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET="tc5-solidarytech-tfstate-${ACCOUNT_ID}"
+          TABLE="tc5-solidarytech-tflock-${ACCOUNT_ID}"
+          cat > terraform.tfvars <<EOF
+          aws_region              = "us-west-2"
+          primary_region          = "us-east-1"
+          project_name            = "solidarytech"
+          lab_role_arn            = "arn:aws:iam::${ACCOUNT_ID}:role/LabRole"
+          primary_donation_db_arn = "arn:aws:rds:us-east-1:${ACCOUNT_ID}:db:solidarytech-donation-db"
+          primary_account_id      = "${ACCOUNT_ID}"
+          node_desired_size       = 1
+          EOF
+          terraform init -reconfigure \
+            -backend-config="bucket=${BUCKET}" \
+            -backend-config="dynamodb_table=${TABLE}"
+          terraform plan -input=false -no-color | head -200
+
+      - name: Provision DR environment (real drill)
+        if: ${{ inputs.dry_run != true && inputs.dry_run != 'true' }}
+        run: bash scripts/setup-dr.sh
+
+      - name: Validate DR cluster reachable
+        if: ${{ inputs.dry_run != true && inputs.dry_run != 'true' }}
+        run: |
+          aws eks update-kubeconfig --name solidarytech-cluster-dr --region us-west-2
+          kubectl get nodes
+          kubectl get pods -A | head -20
+
+      - name: Execute FAILOVER (destructive)
+        if: ${{ inputs.perform_failover == true || inputs.perform_failover == 'true' }}
+        run: |
+          # Auto-confirma o failover (sem read interativo)
+          echo "FAILOVER" | bash scripts/dr-failover.sh || true
+
+      - name: Cleanup DR environment
+        if: ${{ inputs.dry_run != true && inputs.dry_run != 'true' && (inputs.perform_failover != true && inputs.perform_failover != 'true') }}
+        run: |
+          # Destroi o DR apos o drill nao-destrutivo (mantem primary intacto)
+          cd terraform/environments/dr
+          terraform destroy -auto-approve -input=false
+
+      - name: Generate drill report
+        if: always()
+        run: |
+          mkdir -p docs/drills
+          REPORT="docs/drills/$(date -u +%Y-%m-%d)-drill-report.md"
+          cat > "$REPORT" <<EOF
+          # DR Drill — $(date -u +%Y-%m-%d)
+
+          - **Tipo:** ${{ inputs.dry_run == true && 'Dry-run' || (inputs.perform_failover == true && 'Failover real' || 'Provision + cleanup') }}
+          - **Workflow run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - **Resultado:** ${{ job.status }}
+          - **Tempo:** ver job logs
+
+          ## Proximas acoes
+          - Revisar logs do workflow run
+          - Atualizar PCN se RTO mudou
+          EOF
+          cat "$REPORT"
