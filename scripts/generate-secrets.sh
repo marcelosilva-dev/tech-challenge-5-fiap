@@ -56,9 +56,15 @@ DONATION_DB_ADDRESS=$(terraform output -raw donation_db_address)
 SQS_QUEUE_URL=$(terraform output -raw sqs_queue_url)
 DYNAMODB_TABLE=$(terraform output -raw dynamodb_table_name)
 
-# DB creds vem do terraform.tfvars (sempre existe apos setup-full.sh)
-DB_USERNAME=$(grep '^db_username' terraform.tfvars | cut -d'"' -f2)
-DB_PASSWORD=$(grep '^db_password' terraform.tfvars | cut -d'"' -f2)
+# DB creds do tfvars com fallback para defaults (evita set -e matar o
+# script se tfvars minimo — ex: gerado pelo destroy-all.sh)
+DB_USERNAME=$(grep '^db_username' terraform.tfvars 2>/dev/null | cut -d'"' -f2)
+DB_USERNAME=${DB_USERNAME:-solidary}
+DB_PASSWORD=$(grep '^db_password' terraform.tfvars 2>/dev/null | cut -d'"' -f2)
+if [ -z "$DB_PASSWORD" ]; then
+    log_err "db_password ausente em terraform.tfvars"
+    exit 1
+fi
 
 log_ok "Outputs lidos:"
 echo "  NGO DB:       $NGO_DB_ADDRESS"

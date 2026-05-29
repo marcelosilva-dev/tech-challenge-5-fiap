@@ -21,8 +21,6 @@ kind: Job
 metadata:
   name: donation-db-init
   namespace: solidarytech
-  annotations:
-    argocd.argoproj.io/sync-wave: "-1"
 spec:
   ttlSecondsAfterFinished: 300
   backoffLimit: 3

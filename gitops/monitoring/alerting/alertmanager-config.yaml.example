@@ -105,20 +105,11 @@ stringData:
               *Summary:* {{ .Annotations.summary }}
               *Description:* {{ .Annotations.description }}
               {{ end }}
-        webhook_configs:
-          # Self-Healing: GitHub Actions repository_dispatch.
-          # NOTA: payload do Alertmanager nao tem `event_type` esperado pelo
-          # repository_dispatch. Workflow self-healing.yaml usa workflow_dispatch
-          # manual nesta versao; integracao webhook completa exige middleware
-          # (alertmanager-webhook-server ou similar). Documentado em
-          # docs/ITSM-LIFECYCLE.md.
-          - url: 'https://api.github.com/repos/rivachef/TC5-SolidaryTech/dispatches'
-            http_config:
-              authorization:
-                type: Bearer
-                credentials: '<GITHUB_PAT_TOKEN>'
-            send_resolved: false
-            max_alerts: 1
+        # Self-Healing direct webhook removido — Alertmanager payload nao bate
+        # com repository_dispatch nativamente. Workflow self-healing.yaml usa
+        # workflow_dispatch (manual via `gh workflow run` ou UI do GitHub).
+        # Para integracao webhook->repository_dispatch automatica, precisa
+        # middleware (alertmanager-webhook-server, kube-webhook-relay, etc.).
 
       # ----------------------------------------------------------------
       # Warning: apenas Discord
