@@ -64,7 +64,11 @@ if ! aws sts get-caller-identity > /dev/null 2>&1; then
     log_error "Credenciais AWS invalidas ou expiradas."
     exit 1
 fi
-log_ok "Credenciais OK"
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+BUCKET="tc5-solidarytech-tfstate-${ACCOUNT_ID}"
+TABLE="tc5-solidarytech-tflock-${ACCOUNT_ID}"
+log_ok "AWS Account: $ACCOUNT_ID"
+log_ok "Backend:     s3://$BUCKET"
 echo ""
 
 # ===== Step 1: Cleanup K8s =====
@@ -198,7 +202,10 @@ echo ""
 # ===== Step 4: Terraform destroy =====
 log_info "[4/5] Terraform destroy..."
 cd "$ENV_DIR"
-terraform init -input=false > /tmp/tf-init-destroy.log 2>&1
+terraform init -input=false -reconfigure \
+    -backend-config="bucket=${BUCKET}" \
+    -backend-config="dynamodb_table=${TABLE}" \
+    > /tmp/tf-init-destroy.log 2>&1
 
 STATE_COUNT=$(terraform state list 2>/dev/null | wc -l | tr -d ' ')
 

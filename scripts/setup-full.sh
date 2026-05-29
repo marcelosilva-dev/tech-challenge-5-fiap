@@ -80,19 +80,26 @@ for tool in terraform kubectl aws; do
 done
 log_ok "Ferramentas: terraform, kubectl, aws"
 
-# terraform.tfvars
+# terraform.tfvars — auto-gerar se nao existir
 if [ ! -f "$ENV_DIR/terraform.tfvars" ]; then
-    log_error "Arquivo nao encontrado: $ENV_DIR/terraform.tfvars"
-    echo ""
-    echo "Copie o template e edite:"
-    echo "  cp $ENV_DIR/terraform.tfvars.example $ENV_DIR/terraform.tfvars"
-    echo ""
-    echo "Preencha:"
-    echo "  - lab_role_arn (use: arn:aws:iam::${ACCOUNT_ID}:role/LabRole)"
-    echo "  - db_password (escolha uma senha forte)"
-    exit 1
+    log_warn "terraform.tfvars nao encontrado. Gerando automaticamente..."
+    cp "$ENV_DIR/terraform.tfvars.example" "$ENV_DIR/terraform.tfvars"
+
+    # Substituir lab_role_arn com ACCOUNT_ID real (AWS Academy padrao)
+    sed -i.bak "s|SEU_ACCOUNT_ID|${ACCOUNT_ID}|g" "$ENV_DIR/terraform.tfvars"
+    rm -f "$ENV_DIR/terraform.tfvars.bak"
+
+    # Gerar db_password aleatorio (24 chars alfanumericos)
+    DB_PASS=$(openssl rand -base64 36 | tr -dc 'a-zA-Z0-9' | head -c 24)
+    sed -i.bak "s|TROQUE_AQUI_DEV_PASSWORD|${DB_PASS}|g" "$ENV_DIR/terraform.tfvars"
+    rm -f "$ENV_DIR/terraform.tfvars.bak"
+
+    log_ok "terraform.tfvars gerado"
+    log_warn "db_password aleatoria salva em terraform.tfvars (no .gitignore)"
+    log_warn "Guarde uma copia se for compartilhar com o grupo!"
+else
+    log_ok "terraform.tfvars presente"
 fi
-log_ok "terraform.tfvars presente"
 
 echo ""
 
@@ -112,8 +119,15 @@ echo ""
 log_info "[2/5] Terraform init + plan..."
 cd "$ENV_DIR"
 
-terraform init -input=false -upgrade > /tmp/tf-init.log 2>&1 \
-    && log_ok "Init OK" \
+# Backend config dinamico (bucket sufixado com ACCOUNT_ID — unicidade global)
+BUCKET="tc5-solidarytech-tfstate-${ACCOUNT_ID}"
+TABLE="tc5-solidarytech-tflock-${ACCOUNT_ID}"
+
+terraform init -input=false -reconfigure \
+    -backend-config="bucket=${BUCKET}" \
+    -backend-config="dynamodb_table=${TABLE}" \
+    > /tmp/tf-init.log 2>&1 \
+    && log_ok "Init OK (backend: s3://${BUCKET})" \
     || { log_error "terraform init falhou. Veja /tmp/tf-init.log"; cat /tmp/tf-init.log; exit 1; }
 
 terraform plan -out=tfplan.binary -input=false 2>&1 | tail -20

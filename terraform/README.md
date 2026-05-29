@@ -25,11 +25,14 @@ terraform/
 
 ## Backend remoto
 
-Cada environment tem state separado no mesmo bucket S3:
-- `s3://tc5-solidarytech-terraform-state/environments/primary/terraform.tfstate`
-- `s3://tc5-solidarytech-terraform-state/environments/dr/terraform.tfstate`
+**Nomes sufixados com AWS Account ID** porque bucket S3 e GLOBAL entre todas as contas. Cada grupo da FIAP tem seu proprio bucket sem conflito:
 
-Lock via DynamoDB: `tc5-solidarytech-terraform-lock` (cross-region).
+- `s3://tc5-solidarytech-tfstate-{ACCOUNT_ID}/environments/primary/terraform.tfstate`
+- `s3://tc5-solidarytech-tfstate-{ACCOUNT_ID}/environments/dr/terraform.tfstate`
+
+Lock via DynamoDB: `tc5-solidarytech-tflock-{ACCOUNT_ID}`.
+
+O `backend.tf` declara configuracao parcial — bucket e dynamodb_table sao injetados em runtime via `-backend-config` no `terraform init` (ja automatizado em `scripts/setup-full.sh`).
 
 ## Tags FinOps obrigatorias
 
@@ -43,33 +46,34 @@ Aplicadas via `default_tags` no provider AWS (propagam para todos os recursos su
 | `ManagedBy` | `Terraform` |
 | `Repository` | `rivachef/TC5-SolidaryTech` |
 
-## Pre-requisitos (uma vez)
+## Subir ambiente primary (1 comando)
 
 ```bash
-# Bucket de state
-aws s3api create-bucket --bucket tc5-solidarytech-terraform-state --region us-east-1
-aws s3api put-bucket-versioning --bucket tc5-solidarytech-terraform-state \
-  --versioning-configuration Status=Enabled
+# Exportar credenciais AWS Academy ativas
+export AWS_ACCESS_KEY_ID="..."
+export AWS_SECRET_ACCESS_KEY="..."
+export AWS_SESSION_TOKEN="..."
 
-# Tabela de lock
-aws dynamodb create-table \
-  --table-name tc5-solidarytech-terraform-lock \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region us-east-1
+# Da raiz do repo:
+./scripts/setup-full.sh
 ```
 
-## Subir ambiente primary
+O script `setup-full.sh` ja automatiza:
+- Deteccao do AWS Account ID
+- Auto-criacao do `terraform.tfvars` (com `lab_role_arn` correto e `db_password` random de 24 chars)
+- Bootstrap idempotente do bucket S3 + tabela DynamoDB (com ACCOUNT_ID no nome)
+- `terraform init` com `-backend-config` dinamico
+- `terraform plan` + confirmacao interativa
+- `terraform apply` (~15-20 min)
+- `aws eks update-kubeconfig` + `kubectl get nodes` para validar
+
+## Destruir ambiente (fim do dia, economia)
 
 ```bash
-cd terraform/environments/primary
-cp terraform.tfvars.example terraform.tfvars
-# editar terraform.tfvars com lab_role_arn e db_password
-terraform init
-terraform plan
-terraform apply
+./scripts/destroy-all.sh
 ```
+
+Cleanup robusto: K8s LBs -> LBs orfaos -> ENIs orfas -> `terraform destroy`. Bucket de state e DynamoDB lock sao **preservados** para proximo apply.
 
 ## AWS Academy
 

@@ -12,11 +12,13 @@ terraform {
     }
   }
 
+  # Backend parcial: bucket e dynamodb_table sao passados via
+  # -backend-config no `terraform init` (sufixados com ACCOUNT_ID
+  # para garantir unicidade global do bucket S3).
+  # Ver scripts/setup-full.sh
   backend "s3" {
-    bucket         = "tc5-solidarytech-terraform-state"
-    key            = "environments/primary/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "tc5-solidarytech-terraform-lock"
-    encrypt        = true
+    key     = "environments/primary/terraform.tfstate"
+    region  = "us-east-1"
+    encrypt = true
   }
 }

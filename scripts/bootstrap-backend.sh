@@ -13,8 +13,17 @@
 ###############################################################################
 set -e
 
-BUCKET="tc5-solidarytech-terraform-state"
-TABLE="tc5-solidarytech-terraform-lock"
+# Nomes sao sufixados com ACCOUNT_ID porque:
+#   - Bucket S3 e GLOBAL entre todas as contas AWS do mundo
+#   - Cada grupo da FIAP teria conflito se usasse nome fixo
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null)
+if [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
+    echo "ERRO: Nao foi possivel obter AWS Account ID. Configure credenciais primeiro." >&2
+    exit 1
+fi
+
+BUCKET="tc5-solidarytech-tfstate-${ACCOUNT_ID}"
+TABLE="tc5-solidarytech-tflock-${ACCOUNT_ID}"
 REGION="us-east-1"
 
 GREEN='\033[0;32m'
@@ -33,17 +42,9 @@ echo "  Bootstrap Terraform Backend - SolidaryTech"
 echo "============================================"
 echo ""
 
-# Verificar credenciais AWS
-log_info "Verificando credenciais AWS..."
-if ! aws sts get-caller-identity > /dev/null 2>&1; then
-    log_error "Credenciais AWS invalidas. Configure antes:"
-    echo "  export AWS_ACCESS_KEY_ID=..."
-    echo "  export AWS_SECRET_ACCESS_KEY=..."
-    echo "  export AWS_SESSION_TOKEN=..."
-    exit 1
-fi
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 log_ok "AWS Account: $ACCOUNT_ID"
+log_ok "Bucket:      $BUCKET"
+log_ok "Lock table:  $TABLE"
 
 # ===== Bucket S3 =====
 log_info "Verificando bucket S3 '$BUCKET'..."
