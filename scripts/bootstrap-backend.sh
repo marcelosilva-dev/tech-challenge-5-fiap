@@ -12,6 +12,7 @@
 # Uso: ./scripts/bootstrap-backend.sh
 ###############################################################################
 set -e
+set -o pipefail
 
 # Nomes sao sufixados com ACCOUNT_ID porque:
 #   - Bucket S3 e GLOBAL entre todas as contas AWS do mundo

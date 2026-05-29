@@ -19,6 +19,7 @@
 #   ./scripts/destroy-all.sh [--auto-approve]
 ###############################################################################
 set -e
+set -o pipefail  # garante que erro em pipeline propaga (evita `| tee` mascarar exit code)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -202,6 +203,19 @@ echo ""
 # ===== Step 4: Terraform destroy =====
 log_info "[4/5] Terraform destroy..."
 cd "$ENV_DIR"
+
+# Bug fix: terraform.tfvars pode nao existir (gitignored, removido entre apply
+# e destroy). Sem ele, terraform pede input interativo e trava em background.
+# Geramos placeholder minimo — o destroy nao usa db_password de fato.
+if [ ! -f "terraform.tfvars" ]; then
+    log_warn "terraform.tfvars ausente — gerando placeholder para destroy..."
+    cat > terraform.tfvars <<EOF
+lab_role_arn = "arn:aws:iam::${ACCOUNT_ID}:role/LabRole"
+db_password  = "placeholder_not_used_for_destroy"
+EOF
+    log_ok "terraform.tfvars placeholder criado"
+fi
+
 terraform init -input=false -reconfigure \
     -backend-config="bucket=${BUCKET}" \
     -backend-config="dynamodb_table=${TABLE}" \
@@ -211,7 +225,9 @@ STATE_COUNT=$(terraform state list 2>/dev/null | wc -l | tr -d ' ')
 
 if [ "$STATE_COUNT" -gt 0 ]; then
     log_info "Encontrados $STATE_COUNT recursos no state. Destroying..."
-    terraform destroy -auto-approve -lock-timeout=120s
+    # -input=false obrigatorio: sem TTY (background/CI), terraform travaria
+    # pedindo qualquer variavel que falte. Falha rapido em vez de bloquear.
+    terraform destroy -auto-approve -input=false -lock-timeout=120s
     log_ok "Destroy concluido"
 else
     log_ok "State vazio, nada a destruir"

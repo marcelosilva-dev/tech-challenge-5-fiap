@@ -18,6 +18,7 @@
 #   ./scripts/setup-full.sh [--auto-approve]
 ###############################################################################
 set -e
+set -o pipefail  # garante que erro em pipeline propaga (evita `| tee` mascarar exit code)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
