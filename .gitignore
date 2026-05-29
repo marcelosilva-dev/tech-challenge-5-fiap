@@ -4,6 +4,7 @@
 !.env.example
 scripts/_generated/
 gitops/monitoring/newrelic-secret.yaml
+gitops/monitoring/alerting/alertmanager-config.yaml
 
 # Terraform
 **/.terraform/

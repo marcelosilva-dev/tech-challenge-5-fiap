@@ -1,0 +1,153 @@
+name: Self-Healing — Pod Recovery
+
+# Workflow de mitigacao automatica de incidentes (reduz MTTR).
+# Pattern herdado da FASE 4: kubectl rollout restart no servico afetado +
+# notifica Discord pra visibilidade do time.
+#
+# Triggers:
+#   1. workflow_dispatch: manual via UI ou `gh workflow run` (DEMO + emergency)
+#   2. repository_dispatch: futura integracao webhook do Alertmanager
+#      (event_type: pod-crash / high-error-rate / slo-burn)
+#
+# Pre-requisitos (GitHub Secrets):
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN  (Academy)
+#   DISCORD_WEBHOOK_URL                                          (notificacao)
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Microsservico a reiniciar"
+        type: choice
+        options:
+          - donation-service
+          - ngo-service
+          - volunteer-service
+        required: true
+      reason:
+        description: "Motivo (sera incluido na notificacao)"
+        type: string
+        default: "Manual recovery via workflow_dispatch"
+
+  repository_dispatch:
+    types: [pod-crash, high-error-rate, slo-burn, manual-heal]
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  CLUSTER_NAME: solidarytech-cluster
+
+jobs:
+  heal:
+    name: Restart deployment + notify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine target service
+        id: target
+        run: |
+          # workflow_dispatch usa inputs; repository_dispatch usa client_payload
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SERVICE="${{ inputs.service }}"
+            REASON="${{ inputs.reason }}"
+          else
+            SERVICE="${{ github.event.client_payload.service || 'donation-service' }}"
+            REASON="${{ github.event.action }}: ${{ github.event.client_payload.alertname || 'unknown alert' }}"
+          fi
+          echo "service=$SERVICE" >> $GITHUB_OUTPUT
+          echo "reason=$REASON" >> $GITHUB_OUTPUT
+          echo "::notice::Target: $SERVICE — Reason: $REASON"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.30.0
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Notify Discord — START
+        if: ${{ env.DISCORD_WEBHOOK_URL != '' }}
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -sS -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"content\": \"🛠️ **Self-Healing INICIADO**\",
+              \"embeds\": [{
+                \"title\": \"Servico: ${{ steps.target.outputs.service }}\",
+                \"description\": \"${{ steps.target.outputs.reason }}\",
+                \"color\": 16776960,
+                \"fields\": [
+                  {\"name\": \"Acao\", \"value\": \"kubectl rollout restart\", \"inline\": true},
+                  {\"name\": \"Cluster\", \"value\": \"${{ env.CLUSTER_NAME }}\", \"inline\": true},
+                  {\"name\": \"Run\", \"value\": \"[#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\", \"inline\": true}
+                ]
+              }]
+            }" || true
+
+      - name: Pre-action snapshot
+        id: snapshot
+        run: |
+          echo "=== Pods ANTES ===" | tee -a $GITHUB_STEP_SUMMARY
+          kubectl get pods -n solidarytech -l app=${{ steps.target.outputs.service }} -o wide | tee -a $GITHUB_STEP_SUMMARY
+
+      - name: Rollout restart
+        run: |
+          kubectl rollout restart deployment/${{ steps.target.outputs.service }} -n solidarytech
+          kubectl rollout status deployment/${{ steps.target.outputs.service }} -n solidarytech --timeout=180s
+
+      - name: Post-action snapshot
+        run: |
+          echo "=== Pods DEPOIS ===" | tee -a $GITHUB_STEP_SUMMARY
+          kubectl get pods -n solidarytech -l app=${{ steps.target.outputs.service }} -o wide | tee -a $GITHUB_STEP_SUMMARY
+
+      - name: Notify Discord — SUCCESS
+        if: ${{ success() }}
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          [ -z "$DISCORD_WEBHOOK_URL" ] && exit 0
+          curl -sS -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"content\": \"✅ **Self-Healing CONCLUIDO**\",
+              \"embeds\": [{
+                \"title\": \"Servico: ${{ steps.target.outputs.service }}\",
+                \"description\": \"Rollout restart finalizado com sucesso\",
+                \"color\": 65280
+              }]
+            }" || true
+
+      - name: Notify Discord — FAILURE
+        if: ${{ failure() }}
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          [ -z "$DISCORD_WEBHOOK_URL" ] && exit 0
+          curl -sS -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"content\": \"❌ **Self-Healing FALHOU — escalar para SRE on-call**\",
+              \"embeds\": [{
+                \"title\": \"Servico: ${{ steps.target.outputs.service }}\",
+                \"description\": \"Self-healing nao conseguiu mitigar. Intervencao humana necessaria.\",
+                \"color\": 16711680,
+                \"fields\": [
+                  {\"name\": \"Run logs\", \"value\": \"[#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\"}
+                ]
+              }]
+            }" || true

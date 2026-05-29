@@ -1,0 +1,152 @@
+# Alertmanager Configuration Secret (template — placeholders).
+#
+# Copie para alertmanager-config.yaml e substitua os 3 placeholders:
+#   <DISCORD_WEBHOOK_URL>      do Discord (Server Settings -> Integrations -> Webhooks)
+#   <PAGERDUTY_INTEGRATION_KEY> do Service do PagerDuty (Events API V2)
+#   <GITHUB_PAT_TOKEN>          PAT do GitHub com escopo 'repo' (apenas para self-healing)
+#
+# Apply: kubectl apply -f gitops/monitoring/alerting/alertmanager-config.yaml
+#
+# NOTA: o secret name DEVE coincidir com o gerenciado pelo Helm chart:
+#   alertmanager-prometheus-kube-prometheus-alertmanager
+# Discord aceita Slack-format messages via /slack suffix no webhook.
+#
+# Pattern herdado da FASE 4 (validado em producao no ToggleMaster).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-prometheus-kube-prometheus-alertmanager
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: solidarytech
+type: Opaque
+stringData:
+  alertmanager.yaml: |
+    global:
+      resolve_timeout: 5m
+
+    route:
+      group_by: ['alertname', 'service']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: 'solidarytech-default'
+
+      routes:
+        # Silenciar Watchdog (heartbeat — nao acionavel)
+        - match:
+            alertname: Watchdog
+          receiver: 'null'
+
+        # Silenciar alertas de KubeControllerManagerDown (esperado em managed EKS)
+        - match:
+            alertname: KubeControllerManagerDown
+          receiver: 'null'
+
+        # SLO Burn (donation-service Hot Path) — PagerDuty + Discord + self-healing
+        - match:
+            slo: availability
+          receiver: 'solidarytech-critical'
+          continue: true
+          group_wait: 0s
+          repeat_interval: 30m
+
+        # Criticos genericos
+        - match:
+            severity: critical
+          receiver: 'solidarytech-critical'
+          continue: true
+
+        # Warnings -> Discord apenas
+        - match:
+            severity: warning
+          receiver: 'solidarytech-warning'
+
+    receivers:
+      - name: 'null'
+
+      # ----------------------------------------------------------------
+      # Default: Discord (catch-all)
+      # ----------------------------------------------------------------
+      - name: 'solidarytech-default'
+        slack_configs:
+          - api_url: '<DISCORD_WEBHOOK_URL>/slack'
+            channel: '#alerts'
+            send_resolved: true
+            title: '{{ .CommonLabels.alertname }}'
+            text: >-
+              {{ range .Alerts }}
+              *Alert:* {{ .Labels.alertname }} - {{ .Labels.severity }}
+              *Summary:* {{ .Annotations.summary }}
+              *Description:* {{ .Annotations.description }}
+              {{ end }}
+
+      # ----------------------------------------------------------------
+      # Critical: PagerDuty (ITSM) + Discord (visibilidade) + GitHub
+      #           Actions (self-healing via repository_dispatch)
+      # ----------------------------------------------------------------
+      - name: 'solidarytech-critical'
+        pagerduty_configs:
+          - routing_key: '<PAGERDUTY_INTEGRATION_KEY>'
+            severity: critical
+            description: '[CRITICAL] {{ .CommonLabels.alertname }} — {{ .CommonLabels.service }}'
+            details:
+              description: '{{ .CommonAnnotations.description }}'
+              service: '{{ .CommonLabels.service }}'
+              cluster: 'solidarytech-cluster'
+        slack_configs:
+          - api_url: '<DISCORD_WEBHOOK_URL>/slack'
+            channel: '#alerts'
+            send_resolved: true
+            title: 'CRITICAL: {{ .CommonLabels.alertname }}'
+            text: >-
+              {{ range .Alerts }}
+              *Alert:* {{ .Labels.alertname }} - CRITICAL
+              *Summary:* {{ .Annotations.summary }}
+              *Description:* {{ .Annotations.description }}
+              {{ end }}
+        webhook_configs:
+          # Self-Healing: GitHub Actions repository_dispatch.
+          # NOTA: payload do Alertmanager nao tem `event_type` esperado pelo
+          # repository_dispatch. Workflow self-healing.yaml usa workflow_dispatch
+          # manual nesta versao; integracao webhook completa exige middleware
+          # (alertmanager-webhook-server ou similar). Documentado em
+          # docs/ITSM-LIFECYCLE.md.
+          - url: 'https://api.github.com/repos/rivachef/TC5-SolidaryTech/dispatches'
+            http_config:
+              authorization:
+                type: Bearer
+                credentials: '<GITHUB_PAT_TOKEN>'
+            send_resolved: false
+            max_alerts: 1
+
+      # ----------------------------------------------------------------
+      # Warning: apenas Discord
+      # ----------------------------------------------------------------
+      - name: 'solidarytech-warning'
+        slack_configs:
+          - api_url: '<DISCORD_WEBHOOK_URL>/slack'
+            channel: '#alerts'
+            send_resolved: true
+            title: 'WARNING: {{ .CommonLabels.alertname }}'
+            text: >-
+              {{ range .Alerts }}
+              *Alert:* {{ .Labels.alertname }} - WARNING
+              *Summary:* {{ .Annotations.summary }}
+              *Description:* {{ .Annotations.description }}
+              {{ end }}
+
+    # Inhibit rules: alerta critico silencia warning correlato
+    inhibit_rules:
+      - source_match:
+          severity: critical
+        target_match:
+          severity: warning
+        equal: ['alertname']
+
+      # Causa raiz: PodNotReady silencia HighErrorRate/Latency do mesmo servico
+      - source_match:
+          alertname: PodNotReady
+        target_match_re:
+          alertname: HighErrorRate5xx|DonationLatencyP95High|DonationSLOFastBurn
+        equal: ['service']
