@@ -7,10 +7,14 @@
 
 ## Identificação do grupo
 
-| Nome | RM | Username GitHub |
-|------|-----|-----------------|
-| César Paulino | _RM_ | rivachef |
-| _(adicionar demais integrantes)_ | | |
+| Participante | RM |
+|---|---|
+| Luiz Cesar Paulino da Costa | RM367925 |
+| Marcelo Oliveira | RM368372 |
+| Ricardo Pimenta | RM368911 |
+| Sergio Muller | RM368926 |
+
+**Turma:** Pós-Graduação — DevOps & Arquitetura de Software — FIAP Pos Tech
 
 **Repositório:** https://github.com/rivachef/TC5-SolidaryTech
 **Vídeo de demonstração:** _(adicionar link após gravação)_
