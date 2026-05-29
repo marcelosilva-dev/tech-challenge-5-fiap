@@ -22,7 +22,14 @@ if not DYNAMODB_TABLE:
     sys.exit(1)
 
 try:
-    dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
+    endpoint_url = os.getenv("AWS_ENDPOINT_URL") or None
+    if endpoint_url:
+        log.info(f"AWS endpoint customizado em uso: {endpoint_url}")
+    dynamodb = boto3.resource(
+        "dynamodb",
+        region_name=AWS_REGION,
+        endpoint_url=endpoint_url,
+    )
     table = dynamodb.Table(DYNAMODB_TABLE)
     log.info(f"Conectado à tabela DynamoDB: {DYNAMODB_TABLE}")
 except Exception as e:
