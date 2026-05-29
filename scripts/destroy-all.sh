@@ -115,7 +115,20 @@ for item in data.get('items', []):
     # Deletar Ingress
     kubectl delete ingress --all --all-namespaces --timeout=60s 2>/dev/null || true
 
-    # Deletar namespaces customizados
+    # Velero precisa de cleanup especial: finalizers em Backups/Restores podem
+    # bloquear delete do namespace. Helm uninstall remove CRDs e finalizers.
+    if kubectl get namespace velero > /dev/null 2>&1; then
+        log_info "Limpando Velero (helm uninstall + remover finalizers)..."
+        helm uninstall velero -n velero --timeout 60s 2>/dev/null || true
+        # Forca delete de Backups/Restores presos por finalizer
+        for resource in backups restores schedules backupstoragelocations volumesnapshotlocations; do
+            kubectl get $resource.velero.io -n velero -o name 2>/dev/null | \
+                xargs -r kubectl patch -n velero --type=merge -p '{"metadata":{"finalizers":[]}}' 2>/dev/null || true
+        done
+    fi
+
+    # Deletar namespaces customizados (pega monitoring, argocd, velero,
+    # ingress-nginx, solidarytech — tudo que tem LBs ou ENIs)
     log_info "Deletando namespaces customizados..."
     CUSTOM_NS=$(kubectl get ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | \
         grep -v -E '^(default|kube-system|kube-public|kube-node-lease)$' || true)
@@ -248,5 +261,24 @@ echo ""
 
 log_ok "Destruicao finalizada"
 echo ""
-log_info "Backend (S3 + DynamoDB lock) preservado para proximo apply."
-log_info "Para remover bucket + lock table: faca manualmente apos confirmar."
+
+# Buckets preservados (custo desprezivel mas existem)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "")
+log_info "Recursos PRESERVADOS (custo ~$0.20/mes, removiveis manualmente):"
+echo "  - s3://tc5-solidarytech-tfstate-${ACCOUNT_ID}              (state Terraform — manter para re-deploy)"
+echo "  - DynamoDB tc5-solidarytech-tflock-${ACCOUNT_ID}          (lock Terraform — manter)"
+echo "  - s3://solidarytech-velero-backups-${ACCOUNT_ID}          (Velero backups us-west-2)"
+echo ""
+
+# Aviso sobre DR environment (se state nao-vazio em environments/dr)
+DR_ENV_DIR="$PROJECT_DIR/terraform/environments/dr"
+if [ -d "$DR_ENV_DIR/.terraform" ] || aws s3 ls "s3://tc5-solidarytech-tfstate-${ACCOUNT_ID}/environments/dr/" 2>/dev/null | grep -q tfstate; then
+    log_warn "Ambiente DR (us-west-2) PODE TER recursos. Para destruir:"
+    echo "    cd terraform/environments/dr && terraform destroy"
+fi
+
+echo ""
+log_info "Para remover buckets/tables preservados manualmente:"
+echo "    aws s3 rb s3://tc5-solidarytech-tfstate-${ACCOUNT_ID} --force"
+echo "    aws s3 rb s3://solidarytech-velero-backups-${ACCOUNT_ID} --force --region us-west-2"
+echo "    aws dynamodb delete-table --table-name tc5-solidarytech-tflock-${ACCOUNT_ID}"
