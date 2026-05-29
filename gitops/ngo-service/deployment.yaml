@@ -25,7 +25,7 @@ spec:
       containers:
         - name: ngo-service
           # Tag atualizada pelo workflow CI (ci-ngo-service.yaml) a cada push em main
-          image: 538593325211.dkr.ecr.us-east-1.amazonaws.com/ngo-service:latest
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/ngo-service:latest
           imagePullPolicy: Always
           ports:
             - name: http

@@ -247,6 +247,44 @@ else
 fi
 echo ""
 
+# ===== Restaurar placeholders nos manifestos (repo limpo p/ proximo deploy) =====
+# Pattern herdado da FASE 4: gitops/<svc>/deployment.yaml e argocd/applications.yaml
+# tem placeholders <AWS_ACCOUNT_ID> e <GITHUB_USER> que sao substituidos pelo
+# setup-full.sh com valores reais. Aqui restauramos pra manter o repo agnostico,
+# permitindo que outros membros do grupo facam fork e rodem em conta propria.
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "")
+GITHUB_USER=$(git -C "$PROJECT_DIR" remote get-url origin 2>/dev/null \
+    | sed -E 's|.*github\.com[:/]([^/]+)/.*|\1|')
+
+if [ -n "$ACCOUNT_ID" ]; then
+    log_info "Restaurando placeholders <AWS_ACCOUNT_ID>..."
+    for svc in ngo-service donation-service volunteer-service; do
+        FILE="$PROJECT_DIR/gitops/$svc/deployment.yaml"
+        if [ -f "$FILE" ] && grep -q "$ACCOUNT_ID" "$FILE"; then
+            sed -i.bak "s|$ACCOUNT_ID|<AWS_ACCOUNT_ID>|g" "$FILE" && rm -f "$FILE.bak"
+        fi
+    done
+fi
+
+if [ -n "$GITHUB_USER" ]; then
+    log_info "Restaurando placeholders <GITHUB_USER>..."
+    FILE="$PROJECT_DIR/argocd/applications.yaml"
+    if [ -f "$FILE" ] && grep -q "github.com/$GITHUB_USER" "$FILE"; then
+        sed -i.bak "s|github.com/$GITHUB_USER/|github.com/<GITHUB_USER>/|g" "$FILE" && rm -f "$FILE.bak"
+    fi
+fi
+
+# Commit + push automatico (mantem repo limpo no remoto)
+if [ -n "$(git -C "$PROJECT_DIR" status --short gitops/ argocd/ 2>/dev/null)" ]; then
+    log_info "Commitando placeholders restaurados..."
+    git -C "$PROJECT_DIR" add gitops/ argocd/
+    git -C "$PROJECT_DIR" commit -m "chore: restore placeholders after destroy (repo limpo p/ proximo deploy)" --quiet
+    git -C "$PROJECT_DIR" push --quiet 2>/dev/null \
+        && log_ok "Placeholders restaurados e enviados ao remoto" \
+        || log_warn "git push falhou — faca push manualmente"
+fi
+echo ""
+
 # ===== Step 5: Verificacao final =====
 log_info "[5/5] Verificacao final do ambiente:"
 echo ""

@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: volunteer-service
-          image: 538593325211.dkr.ecr.us-east-1.amazonaws.com/volunteer-service:latest
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/volunteer-service:latest
           imagePullPolicy: Always
           ports:
             - name: http
