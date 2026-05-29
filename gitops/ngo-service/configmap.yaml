@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ngo-service-config
+  namespace: solidarytech
+data:
+  PORT: "8081"

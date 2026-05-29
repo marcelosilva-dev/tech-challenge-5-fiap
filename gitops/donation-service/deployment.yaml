@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: donation-service
+  namespace: solidarytech
+  labels:
+    app: donation-service
+    component: backend
+    criticality: hot-path
+spec:
+  # Hot Path: 3 replicas para suportar pico de doacoes.
+  # Sprint 5 (SRE) podera adicionar HPA baseado em CPU/req-rate.
+  replicas: 3
+  selector:
+    matchLabels:
+      app: donation-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: donation-service
+        component: backend
+        criticality: hot-path
+    spec:
+      containers:
+        - name: donation-service
+          image: 538593325211.dkr.ecr.us-east-1.amazonaws.com/donation-service:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8082
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: donation-service-config
+            - secretRef:
+                name: donation-service-secret
+          resources:
+            requests:
+              cpu: 200m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          securityContext:
+            # Imagem distroless ja roda como nonroot UID 65532
+            runAsNonRoot: true
+            runAsUser: 65532
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true

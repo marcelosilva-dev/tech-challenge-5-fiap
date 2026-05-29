@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: solidarytech
+  labels:
+    name: solidarytech
+    project: solidarytech
+    managed-by: argocd

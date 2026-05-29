@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: solidarytech-ingress
+  namespace: solidarytech
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          # NGO Service: /ngos/* + /health (do ngo)
+          - path: /ngos(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: ngo-service
+                port:
+                  number: 8081
+
+          # Donation Service (Hot Path): /donations/*
+          - path: /donations(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: donation-service
+                port:
+                  number: 8082
+
+          # Volunteer Service: /volunteers/*
+          - path: /volunteers(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: volunteer-service
+                port:
+                  number: 8083
