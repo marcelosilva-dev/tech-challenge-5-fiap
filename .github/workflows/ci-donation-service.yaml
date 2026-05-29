@@ -19,7 +19,7 @@ env:
   SERVICE_NAME: donation-service
   WORKING_DIR: microservices/donation-service
   AWS_REGION: us-east-1
-  GO_VERSION: '1.21'
+  GO_VERSION: '1.24'
 
 jobs:
   lint-test:
