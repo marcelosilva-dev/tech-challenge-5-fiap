@@ -16,7 +16,7 @@
 
 **Turma:** Pós-Graduação — DevOps & Arquitetura de Software — FIAP Pos Tech
 
-**Repositório:** https://github.com/rivachef/TC5-SolidaryTech
+**Repositório:** https://github.com/marcelosilva-dev/tech-challenge-5-fiap
 **Vídeo de demonstração:** _(adicionar link após gravação)_
 **Data de entrega:** _(preencher)_
 
@@ -169,7 +169,7 @@ default_tags {
     Environment = "Production"  # ou "DR"
     CostCenter  = "NGO-Core"
     ManagedBy   = "Terraform"
-    Repository  = "rivachef/TC5-SolidaryTech"
+    Repository  = "marcelosilva-dev/tech-challenge-5-fiap"
   }
 }
 ```
@@ -364,7 +364,7 @@ Todos os screenshots em `docs/screenshots/`. Capturados em 2026-05-29 durante va
 
 | Recurso | Link |
 |---------|------|
-| Repositório principal | https://github.com/rivachef/TC5-SolidaryTech |
+| Repositório principal | https://github.com/marcelosilva-dev/tech-challenge-5-fiap |
 | Upstream original | https://github.com/dougls/hackathon-DCLT |
 | Vídeo de demonstração | _(adicionar)_ |
 | ArgoCD UI | _(LoadBalancer URL — dinâmica)_ |

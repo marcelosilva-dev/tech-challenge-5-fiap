@@ -44,7 +44,7 @@ Aplicadas via `default_tags` no provider AWS (propagam para todos os recursos su
 | `Environment` | `Production` (primary) ou `DR` (dr) |
 | `CostCenter` | `NGO-Core` |
 | `ManagedBy` | `Terraform` |
-| `Repository` | `rivachef/TC5-SolidaryTech` |
+| `Repository` | `marcelosilva-dev/tech-challenge-5-fiap` |
 
 ## Subir ambiente primary (1 comando)
 

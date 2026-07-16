@@ -11,8 +11,8 @@
 
 **Ter aberto em abas:**
 1. Slide deck / docs/PCN.md (pitch)
-2. GitHub repo: https://github.com/rivachef/TC5-SolidaryTech
-3. GitHub Actions: https://github.com/rivachef/TC5-SolidaryTech/actions
+2. GitHub repo: https://github.com/marcelosilva-dev/tech-challenge-5-fiap
+3. GitHub Actions: https://github.com/marcelosilva-dev/tech-challenge-5-fiap/actions
 4. ArgoCD UI (LoadBalancer URL)
 5. Grafana dashboard `SolidaryTech Overview`
 6. New Relic — Service Map do `solidarytech-cluster`
@@ -131,7 +131,7 @@
 **Tela:** GitHub Actions — workflow ci-donation-service.yaml
 
 **Script + ações:**
-1. **Abrir** https://github.com/rivachef/TC5-SolidaryTech/actions
+1. **Abrir** https://github.com/marcelosilva-dev/tech-challenge-5-fiap/actions
 2. **Mostrar** os 3 workflows passando verdes (ci-ngo, ci-donation, ci-volunteer)
 3. **Clicar em um run recente** — mostrar os jobs:
    - `lint-test` — flake8/golangci-lint, pytest/go test, **bandit/gosec (SAST)**, **Trivy filesystem (SCA)**
@@ -161,7 +161,7 @@
        Environment = "Production"
        CostCenter = "NGO-Core"
        ManagedBy = "Terraform"
-       Repository = "rivachef/TC5-SolidaryTech"
+       Repository = "marcelosilva-dev/tech-challenge-5-fiap"
      }
    }
    ```
@@ -334,7 +334,7 @@
 > automação e observabilidade descrita aqui hoje serve qualquer outra
 > ONG digital — basta clonar o repositório.
 >
-> Obrigado! Repositório completo em github.com/rivachef/TC5-SolidaryTech."
+> Obrigado! Repositório completo em github.com/marcelosilva-dev/tech-challenge-5-fiap."
 
 ---
 

@@ -38,6 +38,6 @@ terraform apply
 | `Environment` | `DR` |
 | `CostCenter` | `NGO-Core` |
 | `ManagedBy` | `Terraform` |
-| `Repository` | `rivachef/TC5-SolidaryTech` |
+| `Repository` | `marcelosilva-dev/tech-challenge-5-fiap` |
 
 `Environment=DR` (em vez de Production) permite alertas separados de FinOps e filtros de billing.
