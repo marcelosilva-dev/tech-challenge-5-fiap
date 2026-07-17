@@ -16,7 +16,7 @@
 
 **Turma:** Pós-Graduação — DevOps & Arquitetura de Software — FIAP Pos Tech
 
-**Repositório:** https://github.com/marcelosilva-dev/tech-challenge-5-fiap
+**Repositório:** [github.com/marcelosilva-dev/tech-challenge-5-fiap](https://github.com/marcelosilva-dev/tech-challenge-5-fiap)
 **Vídeos de demonstração:** pasta compartilhada no Google Drive — ver [seção dedicada](#vídeos-de-demonstração) abaixo
 **Data de entrega:** 2026-07-17
 
@@ -25,7 +25,7 @@
 ## Vídeos de demonstração
 
 Gravação dividida em 5 partes. Pasta compartilhada (Google Drive):
-**https://drive.google.com/drive/folders/1Kp_Ar4HJBincMk72db34X-i-A9DyMWQT?usp=sharing**
+**[Abrir pasta no Google Drive](https://drive.google.com/drive/folders/1Kp_Ar4HJBincMk72db34X-i-A9DyMWQT?usp=sharing)**
 
 Ordem de visualização recomendada:
 
@@ -381,12 +381,12 @@ Todos os screenshots em `docs/screenshots/`. Capturados em 2026-05-29 durante va
 
 | Recurso | Link |
 |---------|------|
-| Repositório principal | https://github.com/marcelosilva-dev/tech-challenge-5-fiap |
-| Upstream original | https://github.com/dougls/hackathon-DCLT |
-| Vídeo de demonstração | _(adicionar)_ |
+| Repositório principal | [github.com/marcelosilva-dev/tech-challenge-5-fiap](https://github.com/marcelosilva-dev/tech-challenge-5-fiap) |
+| Upstream original | [github.com/dougls/hackathon-DCLT](https://github.com/dougls/hackathon-DCLT) |
+| Vídeos de demonstração | [Pasta no Google Drive](https://drive.google.com/drive/folders/1Kp_Ar4HJBincMk72db34X-i-A9DyMWQT?usp=sharing) |
 | ArgoCD UI | _(LoadBalancer URL — dinâmica)_ |
 | Grafana | _(LoadBalancer URL)_ |
-| New Relic dashboard | https://one.newrelic.com |
+| New Relic dashboard | [one.newrelic.com](https://one.newrelic.com) |
 
 ---
 
