@@ -84,3 +84,5 @@ if __name__ == '__main__':
     # Binding em 0.0.0.0 e intencional: rodando em container, precisa
     # ser acessivel por outros pods/Ingress. Bandit B104 silenciado.
     app.run(host='0.0.0.0', port=port)  # nosec B104
+
+# CI trigger: dispara pipeline apos migracao de repo (marcelosilva-dev/tech-challenge-5-fiap)

@@ -166,3 +166,5 @@ func (a *App) sendNotificationEvent(d Donation) {
 		log.Printf("Falha ao despachar evento SQS: %v", err)
 	}
 }
+
+// CI trigger: dispara pipeline apos migracao de repo (marcelosilva-dev/tech-challenge-5-fiap)
