@@ -17,8 +17,25 @@
 **Turma:** Pós-Graduação — DevOps & Arquitetura de Software — FIAP Pos Tech
 
 **Repositório:** https://github.com/marcelosilva-dev/tech-challenge-5-fiap
-**Vídeo de demonstração:** _(adicionar link após gravação)_
-**Data de entrega:** _(preencher)_
+**Vídeos de demonstração:** pasta compartilhada no Google Drive — ver [seção dedicada](#vídeos-de-demonstração) abaixo
+**Data de entrega:** 2026-07-17
+
+---
+
+## Vídeos de demonstração
+
+Gravação dividida em 5 partes. Pasta compartilhada (Google Drive):
+**https://drive.google.com/drive/folders/1Kp_Ar4HJBincMk72db34X-i-A9DyMWQT?usp=sharing**
+
+Ordem de visualização recomendada:
+
+| # | Arquivo | Conteúdo |
+|---|---------|----------|
+| 1 | `01-overview-arquitetura.mkv` | Pitch executivo + visão geral da arquitetura dos 3 microsserviços |
+| 2 | `02-github-actions-and-terraform.mkv` | CI/CD com DevSecOps (GitHub Actions) + Infraestrutura como Código (Terraform) |
+| 3 | `03-gitops.mkv` | GitOps em ação — ArgoCD sincronizando os Applications |
+| 4 | `04-sli-slo-sla-errorbudget.mkv` | SRE — SLI/SLO/SLA, Error Budget e self-healing (redução de MTTR) |
+| 5 | `05-disaster-recovery.mkv` | Disaster Recovery — Velero (backup) + Warm Standby cross-region |
 
 ---
 
