@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
         - name: donation-service
-          image: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/donation-service:latest
+          image: 019672824008.dkr.ecr.us-east-1.amazonaws.com/donation-service:latest
           imagePullPolicy: Always
           ports:
             - name: http

@@ -7,7 +7,7 @@ metadata:
 spec:
   description: Microsservicos da SolidaryTech monitorados pelo ArgoCD
   sourceRepos:
-    - "https://github.com/<GITHUB_USER>/tech-challenge-5-fiap"
+    - "https://github.com/marcelosilva-dev/tech-challenge-5-fiap"
   destinations:
     - namespace: solidarytech
       server: https://kubernetes.default.svc
@@ -30,7 +30,7 @@ metadata:
 spec:
   project: solidarytech
   source:
-    repoURL: https://github.com/<GITHUB_USER>/tech-challenge-5-fiap
+    repoURL: https://github.com/marcelosilva-dev/tech-challenge-5-fiap
     targetRevision: main
     path: gitops
     directory:
@@ -57,7 +57,7 @@ metadata:
 spec:
   project: solidarytech
   source:
-    repoURL: https://github.com/<GITHUB_USER>/tech-challenge-5-fiap
+    repoURL: https://github.com/marcelosilva-dev/tech-challenge-5-fiap
     targetRevision: main
     path: gitops/ngo-service
   destination:
@@ -81,7 +81,7 @@ metadata:
 spec:
   project: solidarytech
   source:
-    repoURL: https://github.com/<GITHUB_USER>/tech-challenge-5-fiap
+    repoURL: https://github.com/marcelosilva-dev/tech-challenge-5-fiap
     targetRevision: main
     path: gitops/donation-service
   destination:
@@ -105,7 +105,7 @@ metadata:
 spec:
   project: solidarytech
   source:
-    repoURL: https://github.com/<GITHUB_USER>/tech-challenge-5-fiap
+    repoURL: https://github.com/marcelosilva-dev/tech-challenge-5-fiap
     targetRevision: main
     path: gitops/volunteer-service
   destination:
